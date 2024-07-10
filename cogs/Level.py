@@ -1,17 +1,89 @@
 import discord
 from discord.ext import commands
 
+from requests import get
 from math import sqrt, ceil
 from random import randint
 from sqlite3 import connect
 from utils.settings import BOT_CMD_ID
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from os import remove
+from typing import Optional
+
 
 database = connect('database.sqlite')
 database.autocommit = True
 cursor = database.cursor()
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS Level(user_id INT PRIMARY KEY, exp INT, level INT, last_level INT)""")
+
+
+def fetch_user_info(message: discord.Message):
+    cursor.execute(f"""
+                    SELECT * FROM Level
+                    WHERE user_id = {message.author.id}
+                """)
+
+    result = cursor.fetchone()
+
+    if result is None:
+        cursor.execute(f"""
+                        INSERT INTO Level
+                        VALUES({message.author.id}, 1, 0 , 1)
+                    """)
+
+    return result[1], result[2], result[3]
+
+
+def create_base_card():
+    # Create a blank image with a solid background color
+    base_width, base_height = 500, 300
+    background_color = (50, 50, 50)  # Dark gray
+    base = Image.new('RGBA', (base_width, base_height), background_color)
+
+    # Adding sever icon to base image
+    server_icon = Image.open('images/server_icon.png').convert("RGBA")
+    server_icon = server_icon.resize((50,50))
+    base.paste(server_icon, (400,20), server_icon)
+
+    # Save the image
+    base.save("images/base.png")
+
+
+
+def create_rank_card(username, avatar_url, level, rank, exp) -> str:
+    try:
+        base = Image.open('images/base.png').convert("RGBA")
+    except FileNotFoundError:
+        create_base_card()
+        base = Image.open('images/base.png').convert("RGBA")
+    
+    draw = ImageDraw.Draw(base)
+    
+    # Load avatar image
+    response = get(avatar_url)
+    avatar = Image.open(BytesIO(response.content)).convert('RGBA')
+    avatar = avatar.resize((120, 120))
+    base.paste(avatar, (20, 20), avatar)
+
+    # Define fonts
+    font_path = "cogs/Fonts/OpenSans-Bold.ttf"
+    font = ImageFont.truetype(font_path, 24)
+    small_font = ImageFont.truetype(font_path, 16)
+
+    # Add text to image
+    draw.text((150, 20), username, font=font, fill='white')
+    draw.text((150, 60), f'LVL {level}', font=small_font, fill='white')
+    draw.text((150, 100), f'Rank: #{rank}', font=small_font, fill='white')
+    draw.text((150, 140), f'Total exp: {exp}', font=small_font, fill='white')
+
+    # Save image to disk (will be deleted later)
+    file_path = f"images/{username}_rank_card.png"
+    base.save(file_path)
+
+    return file_path
 
 
 class Leveling(commands.Cog):
@@ -40,7 +112,7 @@ class Leveling(commands.Cog):
                 timestamp= datetime.now(),
                 description=f"{message.author.mention} has leveled up to *Level {level}*. GGS"
             )
-            embed.thumbnail(url = message.author.display_avatar())
+            embed.thumbnail(url = message.author.display_avatar.url)
             await self.BOT_CMD_CHANNEL.send(embed=embed)
 
             cursor.execute(f"""
@@ -51,8 +123,30 @@ class Leveling(commands.Cog):
 
 
     @commands.hybrid_command(name='rank')
-    async def rank(self, ctx, member: discord.Member):
+    async def rank(self, ctx, member: Optional[discord.Member]):
         user = member or ctx.author
+
+        # User data (dummy data, replace with actual user data)
+        username = user.name
+        avatar_url = user.avatar.url
+
+        cursor.execute(f"""
+                        SELECT exp, level, RANK() OVER (ORDER BY exp DESC) AS rank
+                        FROM Level
+                        WHERE user_id = {user.id}
+                       """)
+        
+        query = cursor.fetchone()
+        exp, level, rank = query
+
+        # Create rank card
+        rank_card = create_rank_card(username, avatar_url, round(level), rank, exp)
+        
+        # Send rank card
+        await ctx.send(file=discord.File(rank_card))
+
+        # Delete the rank card
+        remove(rank_card)
 
 
 class Leveling_Debugger(commands.Cog):
@@ -102,23 +196,6 @@ class Leveling_Debugger(commands.Cog):
                         SET exp = {exp}, level = {level}, last_level = {ceil(level)}
                         WHERE user_id = {ctx.author.id}
                     """)
-
-
-def fetch_user_info(message: discord.Message):
-    cursor.execute(f"""
-                    SELECT * FROM Level
-                    WHERE user_id = {message.author.id}
-                """)
-
-    result = cursor.fetchone()
-
-    if result is None:
-        cursor.execute(f"""
-                        INSERT INTO Level
-                        VALUES({message.author.id}, 1, 0 , 1)
-                    """)
-
-    return result[1], result[2], result[3]
 
 
 async def setup(bot):

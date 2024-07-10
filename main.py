@@ -24,6 +24,7 @@ async def is_bot_ready():
         )
         await logging_channel.send(embed=embed)
 
+
 # Sends a message when the bot is being shut down due to any critical reason or because of host disconnection
 async def shutdown_message(message):
     logging_channel = bot.get_channel(LOGGING_CHANNEL)
@@ -34,6 +35,7 @@ async def shutdown_message(message):
     )
     await logging_channel.send(embed=embed)
     await bot.close()
+
 
 # Loophole to add the signal handler as coroutine functions can't be called
 def handle_exit(message: str):
@@ -100,11 +102,14 @@ def run_bot():
 # When Ctrl+C is entered (KeyboardInterrupt Error) into terminal
 signal(SIGINT, lambda s, f: handle_exit("CTRL+C was pressed (Bot shutting down from terminal)"))
 
+
 # Terminaltion signal
 signal(SIGTERM, lambda s,f : handle_exit("Bot Shutting down for development"))
 
+
 # Hangup detected on controlling terminal or death of controlling process
 signal(SIGHUP, lambda s,f: handle_exit("Terminal closed, contact host to identify problem."))
+
 
 # Shift F5 is pressed in VS code
 register(lambda :handle_exit('Bot shut down by developer or hosting site.'))
