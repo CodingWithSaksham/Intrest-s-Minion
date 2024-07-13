@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+from os import path, remove
 from requests import get
 from math import sqrt, ceil
 from random import randint
@@ -9,7 +10,6 @@ from utils.settings import BOT_CMD_ID
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
-from os import remove
 from typing import Optional
 
 
@@ -112,7 +112,7 @@ class Leveling(commands.Cog):
                 timestamp= datetime.now(),
                 description=f"{message.author.mention} has leveled up to *Level {level}*. GGS"
             )
-            embed.thumbnail(url = message.author.display_avatar.url)
+            embed.thumbnail(url = message.author.display_avatar._url)
             await self.BOT_CMD_CHANNEL.send(embed=embed)
 
             cursor.execute(f"""
@@ -126,7 +126,7 @@ class Leveling(commands.Cog):
     async def rank(self, ctx, member: Optional[discord.Member]):
         user = member or ctx.author
 
-        # User data (dummy data, replace with actual user data)
+        # User data
         username = user.name
         avatar_url = user.avatar.url
 
@@ -136,8 +136,8 @@ class Leveling(commands.Cog):
                         WHERE user_id = {user.id}
                        """)
         
-        query = cursor.fetchone()
-        exp, level, rank = query
+        result = cursor.fetchone()
+        exp, level, rank = result
 
         # Create rank card
         rank_card = create_rank_card(username, avatar_url, round(level), rank, exp)
@@ -147,6 +147,31 @@ class Leveling(commands.Cog):
 
         # Delete the rank card
         remove(rank_card)
+
+    
+    @commands.hybrid_command(name='leaderboard')
+    async def server_leaderboard(self, ctx):
+        cursor.execute("""
+                    SELECT user_id, exp, RANK() OVER (ORDER BY exp DESC) AS rank
+                    FROM Level
+                    LIMIT 25
+                    """)
+        
+        rows = cursor.fetchall()
+        embed = discord.Embed(title="🏆 Top 25 Users of the Server", color=discord.Color.gold())
+
+        file = discord.File('images/server_icon.png' ,filename='server_icon.png')
+        embed.set_thumbnail(url="attachment://server_icon.png")
+
+
+
+        for row in rows:
+            user_id, exp, rank = row
+            user = await self.bot.fetch_user(user_id)
+            embed.add_field(name=f"{rank}. {user.name}", value=f"**Score**: {exp}", inline=False)
+
+        # Send the embed message
+        await ctx.send(file=file, embed=embed)
 
 
 class Leveling_Debugger(commands.Cog):
