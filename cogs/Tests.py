@@ -5,6 +5,8 @@ from typing import Literal
 
 help_str = 'Contact @thefierywarrior  cause if this ain\'t working we are screwed'
 
+cogs = Literal['Level','Responses','Tests', 'Math']
+
 
 class Tests(commands.Cog):
     def __init__(self, bot):
@@ -25,17 +27,17 @@ class Tests(commands.Cog):
         await ctx.send(f'Pong! Latency: {latency * 1000:.2f} ms', ephemeral = True)
 
     @testers.command(name='reload')
-    async def reload(self, ctx, cog_name: Literal['Math', 'Responses', 'Tests', 'Level']):
+    async def reload(self, ctx, cog_name: cogs):
         await self.bot.reload_extension(f'cogs.{cog_name.title()}')
         await ctx.send(f'Reloaded {cog_name.title()} successfully!', ephemeral = True)
 
     @testers.command(name='unload')
-    async def unload(self, ctx, cog_name: str):
+    async def unload(self, ctx, cog_name: cogs):
         await self.bot.unload_extension(f'cogs.{cog_name.title()}')
         await ctx.send(f'Unloaded {cog_name.title()} successfully!', ephemeral = True)
 
     @testers.command(name='load')
-    async def load(self, ctx, cog_name: str):
+    async def load(self, ctx, cog_name: cogs):
         await self.bot.load_extension(f'cogs.{cog_name.title()}')
         await ctx.send(f'Loaded {cog_name.title()} successfully!', ephemeral = True)
 

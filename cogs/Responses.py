@@ -18,6 +18,7 @@ class Responses(commands.Cog):
         embed.set_thumbnail(url='https://cdn.discordapp.com/avatars/731143503530164374/7ac170c9e25e3cf308d3af80ab961234.webp?size=80')
         await ctx.send(embed=embed)
 
+
     @commands.hybrid_command(name='8ball')
     async def _8ball_command(self, ctx):
         """Returns random 8ball question"""
@@ -33,11 +34,6 @@ class Responses(commands.Cog):
                             ]
         await ctx.send(choice(ball_responses))
 
-    @commands.hybrid_command(name='commands')
-    async def commands_command(self, ctx):
-        """Returns list of commands"""
-        bot_commands = ['\'command', '\'8ball', '\'hello', 'i got way too many to add to this so just use /help']
-        await ctx.send('\n'.join(bot_commands))
 
     @commands.hybrid_command(aliases=['pong', 'p'],
                              name="ping",
@@ -54,12 +50,14 @@ class Responses(commands.Cog):
         embed.set_author(name=str(ctx.author).title(), url='https://github.com/CodingWithPython?tab=repositories')
         await ctx.send(embed=embed)
 
+
     @commands.hybrid_command(name='say')
     async def say(self, ctx, user_message):
         if not user_message:
             await ctx.send('WHAT DO YOU WANT FROM ME')
         else:
             await ctx.send(type(user_message))
+
 
     @commands.hybrid_command(name='hello',
                              aliases=['hi', 'hi_bot'],
@@ -68,12 +66,14 @@ class Responses(commands.Cog):
     async def hello_command(self, ctx):
         await ctx.send(f'Hello {ctx.author.mention}!')
 
+
     @commands.hybrid_command(name='slap', description='Slaps a member')
     async def slap_command(self, ctx, member: discord.Member, reason: str):
         randint_1 = randint(1, 10)
         randint_2 = randint(1, 10)
 
         await ctx.send(f'{ctx.author.mention} slapped {member.mention} with reason {reason}')
+
         if randint_1 == randint_2:
             await ctx.send(f'***CRITICAL HIT*** {member.mention} is now muted for 5 minutes as they are unconscious from the slap')
             await member.add_roles(discord.utils.get(member.guild.roles, name='Muted'))
@@ -81,6 +81,17 @@ class Responses(commands.Cog):
             await ctx.send(f'{member.mention} welcome back! You were slapped unconscious from the slap given by {ctx.author.mention}')
             await member.remove_roles(discord.utils.get(member.guild.roles, name='Muted'))
 
+
+    @commands.Cog.listener()
+    async def on_message(self, ctx):
+        random_number = randint(1,100)
+        if ctx.author.bot: return
+
+        if random_number <= 2:
+            file = discord.File("images/rick_roll.gif")
+            await ctx.reply(file=file)
+
+            await ctx.reply("GET RICK ROLLED SON")
 
 async def setup(bot):
     await bot.add_cog(Responses(bot))

@@ -6,7 +6,7 @@ from requests import get
 from math import sqrt, ceil
 from random import randint
 from sqlite3 import connect
-from utils.settings import BOT_CMD_ID
+from utils.settings import LOGGING_CHANNEL
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -87,9 +87,9 @@ def create_rank_card(username, avatar_url, level, rank, exp) -> str:
 
 
 class Leveling(commands.Cog):
-    def __init__(self, bot: discord.Client) -> None:
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.BOT_CMD_CHANNEL = self.bot.get_channel(BOT_CMD_ID)
+        self.BOT_CMD_CHANNEL = self.bot.get_channel(LOGGING_CHANNEL)
     
 
     @commands.Cog.listener()
@@ -112,7 +112,7 @@ class Leveling(commands.Cog):
                 timestamp= datetime.now(),
                 description=f"{message.author.mention} has leveled up to *Level {level}*. GGS"
             )
-            embed.thumbnail(url = message.author.display_avatar._url)
+            embed.set_thumbnail(url=message.author.display_avatar.url)
             await self.BOT_CMD_CHANNEL.send(embed=embed)
 
             cursor.execute(f"""
@@ -176,7 +176,8 @@ class Leveling(commands.Cog):
 
 class Leveling_Debugger(commands.Cog):
     def __init__(self, bot) -> None:
-        self.bot = bot
+        self.bot :commands.Bot  = bot
+        self.BOT_CMD_CHANNEL = self.bot.get_channel(LOGGING_CHANNEL) 
 
 
     @commands.hybrid_group(name="exp",
@@ -188,12 +189,17 @@ class Leveling_Debugger(commands.Cog):
     
 
     @exp_debugger.command(name='add_exp')
-    async def add_exp(self, ctx, exp_amount: int):
+    async def add_exp(self, ctx: discord.Message, exp_amount: Optional[int] | None, set_level: Optional[int] | None):
         if ctx.author.bot : return
         
         exp, level, last_level =  fetch_user_info(ctx)
-        exp += exp_amount
-        level = 0.1 * sqrt(exp)
+
+        if exp_amount:
+            exp += exp_amount
+        elif set_level: 
+            level = set_level
+        else:
+            level = 0.1 * sqrt(exp)
         
         if level > last_level:
             await self.BOT_CMD_CHANNEL.send(f'Fiery, you leveled up, ab exp hain {exp}')    
@@ -206,12 +212,20 @@ class Leveling_Debugger(commands.Cog):
 
 
     @exp_debugger.command(name='remove_exp')
-    async def remove_exp(self, ctx, exp_amount: int):
+    async def remove_exp(self, ctx, exp_amount: Optional[str], set_level: Optional[int]):
         if ctx.author.bot: return
         exp, level, last_level =  fetch_user_info(ctx)
 
-        exp -= exp_amount
-        level = 0.1 * sqrt(exp)
+        if exp_amount:
+            if exp == 'all':
+                exp = 0
+            
+            else:
+                exp -= int(exp_amount)
+                level = 0.1 * sqrt(exp)
+
+        if set_level:
+            level = set_level
 
         if level < last_level:
             await self.BOT_CMD_CHANNEL.send(f'Fiery, you leveled down, ab exp hain {exp}')
